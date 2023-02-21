@@ -22,14 +22,15 @@ var functions = template.FuncMap{
 	"humanDate": humanDate,
 }
 
-func newTemplateCache(dir string) (map[string]*template.Template, error) {
+func NewTemplateCache(dir string) (map[string]*template.Template, error) {
 	// init cache
 	cache := map[string]*template.Template{}
 
 	// Use the filepath.Glob function to get a slice of all file
 	// paths with the extension '.page.gohtml'. This essentially gives
 	// use a slice of all the 'page' templates for the application.
-	pages, err := filepath.Glob(filepath.Join(dir, "*.page.gohtml"))
+	var pages []string
+	pages, err := filepath.Glob(filepath.Join(dir, "*.page.html"))
 	if err != nil {
 		return nil, err
 	}
@@ -51,20 +52,20 @@ func newTemplateCache(dir string) (map[string]*template.Template, error) {
 
 		// Use the ParseGlob method to add any 'layout' templates to the template set
 		// (in our case, it's just the 'base' layout currently).
-		ts, err = ts.ParseGlob(filepath.Join(dir, "*.layout.gohtml"))
+		ts, err = ts.ParseGlob(filepath.Join(dir, "*.layout.html"))
 		if err != nil {
 			return nil, err
 		}
 
 		// Use the ParseGlob method again to add any 'partial' templates to the template
 		// set (in our case, it's just the 'footer' partial currently).
-		ts, err = ts.ParseGlob(filepath.Join(dir, "*.partial.gohtml"))
+		ts, err = ts.ParseGlob(filepath.Join(dir, "*.partial.html"))
 		if err != nil {
 			return nil, err
 		}
 
-		// Add the template set to the cache, using the name of the page
-		// (like 'home.page.gohtml') as the key
+		// set file name to it's template
+		// cache["home.page.html"] = template
 		cache[name] = ts
 	}
 

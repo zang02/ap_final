@@ -3,7 +3,8 @@ module app
 go 1.19
 
 require (
-	github.com/bmizerany/pat v0.0.0-20210406213842-e4b6760bdd6f
+	github.com/gorilla/mux v1.8.0
+	github.com/joho/godotenv v1.5.1
 	github.com/justinas/alice v1.2.0
 	go.mongodb.org/mongo-driver v1.11.2
 )

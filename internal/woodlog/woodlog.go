@@ -1,7 +1,7 @@
-package jsonlog
+package woodlog
 
 import (
-	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"runtime/debug"
@@ -36,6 +36,8 @@ func (l Level) String() string {
 		return "ERROR"
 	case LevelFatal:
 		return "FATAL"
+	case LevelOff:
+		return "OFF"
 	default:
 		return ""
 	}
@@ -60,19 +62,20 @@ func New(out io.Writer, minLevel Level) *Logger {
 }
 
 // Print is an internal method for writing the log entry.
-func (l *Logger) print(level Level, message string, properties map[string]string) (int, error) {
+func (l *Logger) print(level Level, message string, properties string) (int, error) {
 	// If the severity level of the log entry is below the minimum severity for the
 	// logger, then return with no further action.
 
 	if level < l.minLevel {
 		return 0, nil
 	}
+
 	aux := struct {
-		Level      string            `json:"level"`
-		Message    string            `json:"message"`
-		Properties map[string]string `json:"properties"`
-		Trace      string            `json:"trace,omitempty"`
-		Time       string            `json:"time,omitempty"`
+		Level      string `json:"level"`
+		Message    string `json:"message"`
+		Properties string `json:"properties,omitempty"`
+		Trace      string `json:"trace,omitempty"`
+		Time       string `json:"time,omitempty"`
 	}{
 		Level:      level.String(),
 		Time:       time.Now().UTC().Format(time.RFC3339),
@@ -85,16 +88,8 @@ func (l *Logger) print(level Level, message string, properties map[string]string
 		aux.Trace = string(debug.Stack())
 	}
 
-	var line []byte
+	line := []byte(fmt.Sprintf("%s %s %s %s %s", aux.Time, aux.Level, aux.Message, aux.Properties, aux.Trace))
 
-	// Marshal the anonymous struct to JSON and store it in the line variable. If there
-	// was a problem creating the JSON, set the contents of the log entry to be that
-	// plain-text error message instead.
-	line, err := json.Marshal(aux)
-
-	if err != nil {
-		line = []byte(LevelError.String() + ": unable to marshal log message:" + err.Error())
-	}
 	// Lock the mutex so that no two writes to the output destination cannot happen
 	// concurrently. If we don't do this, it's possible that the text for two or more
 	// log entries will be intermingled in the output.
@@ -108,25 +103,25 @@ func (l *Logger) print(level Level, message string, properties map[string]string
 // Declare some helper methods for writing log entries at the different levels. Notice
 // that these all accept a map as the second parameter which can contain any arbitrary
 // 'properties' that you want to appear in the log entry.
-func (l *Logger) PrintInfo(message string, properties map[string]string) {
+func (l *Logger) PrintInfo(message string, properties string) {
 	l.print(LevelInfo, message, properties)
 }
-func (l *Logger) PrintWarning(message string, properties map[string]string) {
+func (l *Logger) PrintWarning(message string, properties string) {
 	l.print(LevelWarning, message, properties)
 }
-func (l *Logger) PrintError(err error, properties map[string]string) {
+func (l *Logger) PrintError(err error, properties string) {
 	l.print(LevelError, err.Error(), properties)
 }
-func (l *Logger) PrintFatal(err error, properties map[string]string) {
+func (l *Logger) PrintFatal(err error, properties string) {
 	l.print(LevelFatal, err.Error(), properties)
 	os.Exit(1) // For entries at the FATAL level, we also terminate the application.
 }
-func (l *Logger) PrintDebug(message string, properties map[string]string) {
+func (l *Logger) PrintDebug(message string, properties string) {
 	l.print(LevelDebug, message, properties)
 }
 
 // We also implement a Write() method on our Logger type so that it satisfies the
 // io.Writer interface. This writes a log entry at the ERROR level with no additional // properties.
 func (l *Logger) Write(message []byte) (n int, err error) {
-	return l.print(LevelError, string(message), nil)
+	return l.print(LevelError, string(message), "")
 }
