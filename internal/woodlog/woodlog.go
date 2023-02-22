@@ -88,7 +88,7 @@ func (l *Logger) print(level Level, message string, properties string) (int, err
 		aux.Trace = string(debug.Stack())
 	}
 
-	line := []byte(fmt.Sprintf("%s %s %s %s %s", aux.Time, aux.Level, aux.Message, aux.Properties, aux.Trace))
+	line := []byte(fmt.Sprintf("%s | %s | %s | %s | %s", aux.Time, aux.Level, aux.Message, aux.Properties, aux.Trace))
 
 	// Lock the mutex so that no two writes to the output destination cannot happen
 	// concurrently. If we don't do this, it's possible that the text for two or more
@@ -109,11 +109,11 @@ func (l *Logger) PrintInfo(message string, properties string) {
 func (l *Logger) PrintWarning(message string, properties string) {
 	l.print(LevelWarning, message, properties)
 }
-func (l *Logger) PrintError(err error, properties string) {
-	l.print(LevelError, err.Error(), properties)
+func (l *Logger) PrintError(err string, properties string) {
+	l.print(LevelError, err, properties)
 }
-func (l *Logger) PrintFatal(err error, properties string) {
-	l.print(LevelFatal, err.Error(), properties)
+func (l *Logger) PrintFatal(err string, properties string) {
+	l.print(LevelFatal, err, properties)
 	os.Exit(1) // For entries at the FATAL level, we also terminate the application.
 }
 func (l *Logger) PrintDebug(message string, properties string) {

@@ -14,18 +14,18 @@ var (
 )
 
 type Models struct {
-	Tokens TokenModel
-	Users  UserModel
+	// Tokens TokenModel
+	Users UserModel
 }
 
 // For ease of use, we also add a New() method which returns a Models struct containing
 // the initialized MovieModel.
-func NewModels(db *mongo.Client) Models {
+func NewModels(db *mongo.Database) Models {
 	return Models{
 		// Movies:      MovieModel{DB: db},
 		// Permissions: PermissionModel{DB: db},
-		Tokens: TokenModel{DB: db},
-		Users:  UserModel{DB: db},
+		// Tokens: TokenModel{DB: db},
+		Users: UserModel{DB: db},
 	}
 }
 

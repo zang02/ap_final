@@ -41,14 +41,11 @@ func main() {
 
 	templateCache, err := data.NewTemplateCache("./ui/html/")
 	if err != nil {
-		logger.PrintFatal(err, "failed to create template cache")
+		logger.PrintFatal(err.Error(), "failed to create template cache")
 	}
 
-	db, err := openDB(config.db.dns)
-	if err != nil {
-		logger.PrintFatal(err, "failed to connect to mongo")
-	}
-	defer db.Disconnect(context.TODO())
+	db := mustOpenDB(config.db.dns)
+	defer db.Client().Disconnect(context.TODO())
 
 	app := application{
 		templateCache: templateCache,
@@ -59,17 +56,18 @@ func main() {
 
 	err = app.serve()
 	if err != nil {
-		logger.PrintFatal(err, "failed to start server")
+		logger.PrintFatal(err.Error(), "failed to start server")
 	}
 }
 
-func openDB(dsn string) (*mongo.Client, error) {
+// fix later: hardcoded collection name
+func mustOpenDB(dsn string) *mongo.Database {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dsn))
+	db, err := mongo.Connect(ctx, options.Client().ApplyURI(dsn))
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	return client, nil
+	return db.Database("novye")
 }

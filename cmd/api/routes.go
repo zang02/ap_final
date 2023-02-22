@@ -15,16 +15,17 @@ func (app *application) routes() http.Handler {
 	// add the authenticate() middleware to the chain
 	// and use the noSurf middleware on all our dynamic routes.
 
-	// TODO: dynamicMiddleware := alice.New(app.session.Enable, noSurf, app.authenticate)
-	dynamicMiddleware := alice.New()
+	// dynamicMiddleware := alice.New(app.requireAuth)
+	// dynamicMiddleware := alice.New()
 
-	mux := mux.New()
+	r := mux.NewRouter()
 
 	// Register exact matches before wildcard route match (i.e. :id in Get method for
 	// '/snippet/create').
 	// Update these routes to use the dynamic middleware chain follow by the appropriate handler
 	// function.
-	mux.Get("/", dynamicMiddleware.ThenFunc(app.home))
+	// r.Handle("/", dynamicMiddleware.ThenFunc(app.home)).Methods("GET")
+	r.HandleFunc("/", app.home).Methods("GET")
 
 	// Require auth middleware for auth'd/logged-in actions
 	// TODO: mux.Get("/snippet/create", dynamicMiddleware.Append(app.requireAuth).ThenFunc(app.createSnippetForm))
@@ -34,16 +35,17 @@ func (app *application) routes() http.Handler {
 	// TODO: mux.Post("/snippet/create", dynamicMiddleware.Append(app.requireAuth).ThenFunc(app.createSnippet))
 
 	// Add the five new routes for user authentication.
-	mux.Get("/user/signup", dynamicMiddleware.ThenFunc(app.signupUserForm))
-	mux.Post("/user/signup", dynamicMiddleware.ThenFunc(app.signupUser))
-	mux.Get("/user/login", dynamicMiddleware.ThenFunc(app.loginUserForm))
-	mux.Post("/user/login", dynamicMiddleware.ThenFunc(app.loginUser))
+	r.HandleFunc("/user/signup", app.signup).Methods("GET")
+	r.HandleFunc("/user/signup", app.signupHandler).Methods("POST")
+	r.HandleFunc("/user/login", app.login).Methods("GET")
+	r.HandleFunc("/user/login", app.loginHandler).Methods("POST")
 
 	// Require auth middleware for auth'd/logged-in actions
-	mux.Post("/user/logout", dynamicMiddleware.Append(app.requireAuth).ThenFunc(app.logoutUser))
+	// r.Handle("/user/logout", dynamicMiddleware.Append(app.requireAuth).ThenFunc(app.logoutUser))
 
+	// gorilla mux file server
 	fileServer := http.FileServer(http.Dir("./ui/static"))
-	mux.Get("/static/", http.StripPrefix("/static", fileServer))
+	r.PathPrefix("/").Handler(http.StripPrefix("/static", fileServer))
 
-	return standardMiddleware.Then(mux)
+	return standardMiddleware.Then(r)
 }

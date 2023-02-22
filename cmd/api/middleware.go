@@ -42,44 +42,52 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
-// func (app *application) requireAuth(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		// If the user is not authenticated, redirect them to the login page and return
-// 		// from the middleware chain so that no subsequent hanlders in the chain are executed
-// 		if !app.isAuthenticated(r) {
-// 			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
-// 			return
-// 		}
+func (app *application) requireAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If the user is not authenticated, redirect them to the login page and return
+		// from the middleware chain so that no subsequent hanlders in the chain are executed
+		// if !app.isAuthenticated(r) {
+		// 	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+		// 	return
+		// }
+		tokenCookie, err := r.Cookie("token")
+		if err != nil {
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+			return
+		}
 
-// 		// Otherwise set the "Cache-Control: no-store" header so that pages that
-// 		// require authentication are not stored in the users browsers cache (or other
-// 		// intermediary cache)
-// 		w.Header().Add("Cache-Control", "no-store")
-// 		next.ServeHTTP(w, r)
-// 	})
-// }
+		fmt.Println(tokenCookie)
+		// Otherwise set the "Cache-Control: no-store" header so that pages that
+		// require authentication are not stored in the users browsers cache (or other
+		// intermediary cache)
+		w.Header().Add("Cache-Control", "no-store")
+		next.ServeHTTP(w, r)
+	})
+}
 
-// // noSurf uses customized CSRF cookie with the Secure, Path and HttpOnly flags set.
-// func noSurf(next http.Handler) http.Handler {
-// 	csrfHandler := nosurf.New(next)
-// 	csrfHandler.SetBaseCookie(http.Cookie{
-// 		HttpOnly: true,
-// 		Path:     "/",
-// 		Secure:   true,
-// 	})
+// // // noSurf uses customized CSRF cookie with the Secure, Path and HttpOnly flags set.
+// // func noSurf(next http.Handler) http.Handler {
+// // 	csrfHandler := nosurf.New(next)
+// // 	csrfHandler.SetBaseCookie(http.Cookie{
+// // 		HttpOnly: true,
+// // 		Path:     "/",
+// // 		Secure:   true,
+// // 	})
 
-// 	return csrfHandler
-// }
+// // 	return csrfHandler
+// // }
 
 // func (app *application) authenticate(next http.Handler) http.Handler {
 // 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 // 		// Check if authenticatedUserID value exists in the session. If this *is not present*
 // 		// then call the next handler in the chain as normal
-// 		exists := app.session.Exists(r, "authenticatedUserID")
-// 		if !exists {
+
+// 		tokenCookie, err := r.Cookie("token")
+// 		if err != nil {
 // 			next.ServeHTTP(w, r)
 // 			return
 // 		}
+// 		// get user by token
 
 // 		// Fetch the details of the current user from the database based on session
 // 		// authenticatedUserID. If no matching record is found,

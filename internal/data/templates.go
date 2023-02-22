@@ -6,14 +6,16 @@ import (
 	"time"
 )
 
-// type templateData struct {
-// 	Form            *forms.Form
-// 	Snippet         *models.Snippet
-//	IsAuthenticated bool
-// 	Snippets        []*models.Snippet
-// }
+type TemplateData struct {
+	// Form            *forms.Form
+	// Snippet         *models.Snippet
+	IsAuthenticated bool
+	Envelope        Envelope
+	CurrentYear     string
+	// Snippets        []*models.Snippet
+}
 
-type envelope map[string]interface{}
+type Envelope map[string]interface{}
 
 // Initialize a template.FuncMap object and store it in a global variable. This is essentially
 // a string-keyed map which acts as a lookup between the names of our custom template

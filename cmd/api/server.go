@@ -50,7 +50,7 @@ func (app *application) serve() error {
 			shutdownError <- err
 		}
 
-		app.logger.PrintInfo("completing background tasks", "port: "+srv.Addr)
+		app.logger.PrintInfo("completing background tasks", "port"+srv.Addr)
 
 		// Call Wait() to block until our WaitGroup counter is zero --- essentially
 		// blocking until the background goroutines have finished. Then we return nil on
@@ -61,7 +61,7 @@ func (app *application) serve() error {
 
 	}()
 
-	app.logger.PrintInfo("starting server", "port: "+srv.Addr)
+	app.logger.PrintInfo("starting server", "port"+srv.Addr)
 
 	err := srv.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
@@ -75,7 +75,7 @@ func (app *application) serve() error {
 		return err
 	}
 
-	app.logger.PrintInfo("stopped server", "port: "+srv.Addr)
+	app.logger.PrintInfo("stopped server", "port"+srv.Addr)
 
 	return nil
 }
