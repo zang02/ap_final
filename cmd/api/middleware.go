@@ -80,8 +80,6 @@ func (app *application) requireAuth(next http.Handler) http.Handler {
 
 func (app *application) authenticate(td *data.TemplateData, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check if authenticatedUserID value exists in the session. If this *is not present*
-		// then call the next handler in the chain as normal
 
 		tokenCookie, err := r.Cookie("token")
 		if err != nil {
@@ -90,7 +88,6 @@ func (app *application) authenticate(td *data.TemplateData, next http.Handler) h
 			return
 		}
 
-		fmt.Println(tokenCookie)
 		user, err := data.GetUserByToken(tokenCookie.Value)
 		if err == nil {
 			td.User.Email = user.Email
