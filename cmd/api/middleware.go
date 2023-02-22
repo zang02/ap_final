@@ -1,6 +1,7 @@
 package main
 
 import (
+	"app/internal/data"
 	"fmt"
 	"net/http"
 )
@@ -77,37 +78,29 @@ func (app *application) requireAuth(next http.Handler) http.Handler {
 // // 	return csrfHandler
 // // }
 
-// func (app *application) authenticate(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		// Check if authenticatedUserID value exists in the session. If this *is not present*
-// 		// then call the next handler in the chain as normal
+func (app *application) authenticate(td *data.TemplateData, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check if authenticatedUserID value exists in the session. If this *is not present*
+		// then call the next handler in the chain as normal
 
-// 		tokenCookie, err := r.Cookie("token")
-// 		if err != nil {
-// 			next.ServeHTTP(w, r)
-// 			return
-// 		}
-// 		// get user by token
+		tokenCookie, err := r.Cookie("token")
+		if err != nil {
+			fmt.Println("not authenticated")
+			next.ServeHTTP(w, r)
+			return
+		}
 
-// 		// Fetch the details of the current user from the database based on session
-// 		// authenticatedUserID. If no matching record is found,
-// 		// or the current user has been deactivated, remove the (invalid) authenticatedUserID value
-// 		// from their session and call the next handler in the chain as normal.
-// 		user, err := app.users.Get(app.session.GetInt(r, "authenticatedUserID"))
-// 		if errors.Is(err, models.ErrNoRecord) || !user.Active {
-// 			app.session.Remove(r, "authenticatedUserID")
-// 			next.ServeHTTP(w, r)
-// 			return
-// 		} else if err != nil {
-// 			app.serverError(w, err)
-// 			return
-// 		}
+		fmt.Println(tokenCookie)
+		user, err := data.GetUserByToken(tokenCookie.Value)
+		if err == nil {
+			td.User.Email = user.Email
+			td.User.Login = user.Login
+			td.User.Name = user.Name
+			td.User.CreateDate = user.CreateDate
+		}
+		// get user by token
+		// assign user to td pointer
 
-// 		// Otherwise, we know the that the request is coming from an activated, authenticated user.
-// 		// We create a new copy of the request, with a true boolean value added to the request
-// 		// context to indicate this, and call the next handler in the chain *using this new copy of
-// 		// the request*.
-// 		ctx := context.WithValue(r.Context(), contextKeyIsAuthenticated, true)
-// 		next.ServeHTTP(w, r.WithContext(ctx))
-// 	})
-// }
+		next.ServeHTTP(w, r)
+	})
+}

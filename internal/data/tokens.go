@@ -1,5 +1,9 @@
 package data
 
+func GetUserByToken(token string) (*User, error) {
+	return nil, nil
+}
+
 // import (
 // 	"crypto/rand"
 // 	"crypto/sha256"

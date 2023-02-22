@@ -2,36 +2,70 @@ package main
 
 import (
 	"app/internal/data"
+	"app/internal/validator"
 	"net/http"
+	"strings"
 	"time"
 )
 
-func (app *application) home(w http.ResponseWriter, r *http.Request) {
-	// set lastest as home page
-	// s, err := app.snippets.Latest()
-	// if err != nil {
-	// 	app.serverError(w, err)
-	// 	return
-	// }
-	app.render(w, r, "home.page.html", &data.TemplateData{
+// enter requireAuth middleware
+// pointer template data set to zero value
+// then get user by token
+// add user data to pointer template data
 
-		Envelope: data.Envelope{
-			"hello": "World",
-		},
+// func (app *application) HTML(templateName string, data ...any) func(w http.ResponseWriter, r *http.Request) {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+
+// 		ui.RenderTemplate(w, r, templateName, data)
+// 	}
+// }
+
+func (app *application) Render(templateName string, templateData *data.TemplateData) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		app.render(w, r, templateName, templateData)
 	})
 }
+
 func (app *application) signupHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
-	err := app.models.Users.Insert(
-		r.Form["email"][0],
-		r.Form["login"][0],
-		r.Form["password"][0],
-		r.Form["name"][0],
-	)
-	if err != nil {
-		app.serverError(w, err)
+	user := data.User{
+		Email:    r.Form["email"][0],
+		Login:    r.Form["login"][0],
+		Password: r.Form["password"][0],
+		Name:     r.Form["name"][0],
+	}
+	v := validator.New()
+	ValidateUser(v, &user)
+	if !v.Valid() {
+		errMsg := ""
+		for k, v := range v.Errors {
+			errMsg += k + " " + v + "\n"
+		}
+		app.render(w, r, "signup.page.html", &data.TemplateData{
+			ErrorText: errMsg,
+			Code:      409,
+		})
 		return
+	}
+
+	err := app.models.Users.Insert(user)
+	if err != nil {
+		if strings.Contains(err.Error(), "login") {
+			app.render(w, r, "signup.page.html", &data.TemplateData{
+				ErrorText: "user with such login already exists",
+				Code:      409,
+			})
+			return
+		}
+		if strings.Contains(err.Error(), "email") {
+			app.render(w, r, "signup.page.html", &data.TemplateData{
+				ErrorText: "email already in use",
+				Code:      409,
+			})
+			return
+		}
+
 	}
 
 	cookie := &http.Cookie{
@@ -50,59 +84,47 @@ func (app *application) signupHandler(w http.ResponseWriter, r *http.Request) {
 	// rw.Write([]byte("User Created"))
 }
 
-func (app *application) signup(w http.ResponseWriter, r *http.Request) {
-	app.render(w, r, "signup.page.html", &data.TemplateData{})
-}
-
-// func getSignedToken() (string, error) {
-// 	// we make a JWT Token here with signing method of ES256 and claims.
-// 	// claims are attributes.
-// 	// aud - audience
-// 	// iss - issuer
-// 	// exp - expiration of the Token
-// 	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-// 	// 	"aud": "frontend.knowsearch.ml",
-// 	// 	"iss": "knowsearch.ml",
-// 	// 	"exp": string(time.Now().Add(time.Minute * 1).Unix()),
-// 	// })
-// 	claimsMap := map[string]string{
-// 		"aud": "frontend.knowsearch.ml",
-// 		"iss": "knowsearch.ml",
-// 		"exp": fmt.Sprint(time.Now().Add(time.Minute * 1).Unix()),
-// 	}
-// 	// here we provide the shared secret. It should be very complex.\
-// 	// Aslo, it should be passed as a System Environment variable
-
-// 	secret := "S0m3_R4n90m_sss"
-// 	header := "HS256"
-// 	tokenString, err := jwt.GenerateToken(header, claimsMap, secret)
-// 	if err != nil {
-// 		return tokenString, err
-// 	}
-// 	return tokenString, nil
-// }
-
-// searches the user in the database.
-// func validateUser(email string, passwordHash string) (bool, error) {
-
-// 	usr, exists := data.GetUserObject(email)
-// 	if !exists {
-// 		return false, errors.New("user does not exist")
-// 	}
-// 	passwordCheck := usr.ValidatePasswordHash(passwordHash)
-
-// 	if !passwordCheck {
-// 		return false, nil
-// 	}
-// 	return true, nil
-// }
-
-func (app *application) login(w http.ResponseWriter, r *http.Request) {
-	app.render(w, r, "login.page.html", &data.TemplateData{})
-}
-
 func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
 
+	login := r.Form["login"][0]
+	password := r.Form["password"][0]
+
+	if login == "" || password == "" {
+		app.render(w, r, "login.page.html", &data.TemplateData{
+			ErrorText: "login and/or password empty",
+			Code:      409,
+		})
+		return
+	}
+	user, err := app.models.Users.GetByLogin(login)
+	if err.Error() == "mongo: no documents in result" {
+		app.render(w, r, "login.page.html", &data.TemplateData{
+			ErrorText: "user not found",
+			Code:      400,
+		})
+		return
+	}
+
+	if user.Password != password {
+		app.render(w, r, "login.page.html", &data.TemplateData{
+			ErrorText: "wrong password",
+			Code:      409,
+		})
+		return
+	}
+
+	cookie := &http.Cookie{
+		HttpOnly: true,
+		Secure:   true,
+		Name:     "token",
+		Path:     "/",
+		Value:    "122",
+		Expires:  time.Now().Add(15 * time.Second),
+		SameSite: 2,
+	}
+	http.SetCookie(w, cookie)
+	http.Redirect(w, r, "/", http.StatusOK)
 }
 
 // func (app *application) loginUserForm(w http.ResponseWriter, r *http.Request) {

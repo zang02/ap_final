@@ -78,13 +78,13 @@ func (l *Logger) print(level Level, message string, properties string) (int, err
 		Time       string `json:"time,omitempty"`
 	}{
 		Level:      level.String(),
-		Time:       time.Now().UTC().Format(time.RFC3339),
+		Time:       time.Now().UTC().Format("2006-01-02 15:04:05"),
 		Message:    message,
 		Properties: properties,
 	}
 
 	// Include a stack trace for entries at the ERROR and FATAL levels.
-	if level >= LevelError {
+	if level >= LevelFatal {
 		aux.Trace = string(debug.Stack())
 	}
 

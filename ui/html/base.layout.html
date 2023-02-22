@@ -17,6 +17,7 @@
         {{ template "navbar" .}}
 
         <main>
+            {{ .ErrorText }}
             {{template "main" .}}
         </main>
 

@@ -12,6 +12,9 @@ type TemplateData struct {
 	IsAuthenticated bool
 	Envelope        Envelope
 	CurrentYear     string
+	ErrorText       string
+	Code            int
+	User            User
 	// Snippets        []*models.Snippet
 }
 

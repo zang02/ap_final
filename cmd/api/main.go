@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -66,6 +67,22 @@ func mustOpenDB(dsn string) *mongo.Database {
 	defer cancel()
 
 	db, err := mongo.Connect(ctx, options.Client().ApplyURI(dsn))
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.Database("novye").Collection("users").Indexes().CreateMany(
+		context.Background(),
+		[]mongo.IndexModel{
+			{
+				Keys:    bson.D{{Key: "login", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+			{
+				Keys:    bson.D{{Key: "email", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	)
 	if err != nil {
 		panic(err)
 	}

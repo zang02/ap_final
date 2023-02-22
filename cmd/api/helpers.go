@@ -2,6 +2,7 @@ package main
 
 import (
 	"app/internal/data"
+	"app/internal/validator"
 	"bytes"
 	"fmt"
 	"net/http"
@@ -24,6 +25,10 @@ func (app *application) render(w http.ResponseWriter, r *http.Request, name stri
 	// Write the template to the buffer, instead of straight to the http.ResponseWriter.
 	// If there is an error, call our serverError helper and then return.
 	td.CurrentYear = fmt.Sprintf("%v", time.Now().Year())
+
+	if td.Code == 0 {
+		td.Code = 200
+	}
 	// td.Flash = app.session.PopString(r, "flash")
 	// td.IsAuthenticated = app.isAuthenticated(r)
 	// td.CSRFToken = nosurf.Token(r)
@@ -46,4 +51,27 @@ func (app *application) serverError(w http.ResponseWriter, err error) {
 	app.logger.PrintError(err.Error(), "server error")
 
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+}
+
+func ValidateEmail(v *validator.Validator, email string) {
+	v.Check(email != "", "email", "must be provided")
+	v.Check(len(email) < 5000, "email", "must not be more than 5000 bytes long")
+	v.Check(validator.Matches(email, validator.EmailRX), "email", "must be a valid email address")
+}
+func ValidatePassword(v *validator.Validator, password string) {
+	v.Check(password != "", "password", "must be provided")
+	v.Check(len(password) >= 8, "password", "must be at least 8 bytes long")
+	v.Check(len(password) <= 72, "password", "must not be more than 72 bytes long")
+}
+func ValidateUser(v *validator.Validator, user *data.User) {
+	v.Check(user.Login != "", "login", "must be provided")
+	v.Check(len(user.Login) <= 500, "name", "must not be more than 500 bytes long")
+	v.Check(user.Name != "", "name", "must be provided")
+	ValidateEmail(v, user.Email)
+	ValidatePassword(v, user.Password)
+	// If the password hash is ever nil, this will be due to a logic error in our
+	// codebase (probably because we forgot to set a password for the user). It's a
+	// useful sanity check to include here, but it's not a problem with the data
+	// provided by the client. So rather than adding an error to the validation map we
+	// raise a panic instead.
 }
