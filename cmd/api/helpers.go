@@ -75,3 +75,21 @@ func ValidateUser(v *validator.Validator, user *data.User) {
 	// provided by the client. So rather than adding an error to the validation map we
 	// raise a panic instead.
 }
+
+func (app *application) background(fn func()) {
+	app.wg.Add(1)
+
+	go func() {
+		//first thing to do when working with goroutines  is to defer the wg.Done())))))))))))
+		// Use defer to decrement the WaitGroup counter before the goroutine returns.
+		defer app.wg.Done()
+
+		defer func() {
+			if err := recover(); err != nil {
+				app.logger.PrintError(fmt.Errorf("%s", err).Error(), "")
+			}
+		}()
+
+		fn()
+	}()
+}

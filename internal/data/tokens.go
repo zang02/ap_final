@@ -1,7 +1,48 @@
 package data
 
-func GetUserByToken(token string) (*User, error) {
-	return nil, nil
+import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+type TokenModel struct {
+	DB *mongo.Database
+}
+
+type Token struct {
+	UserLogin string `json:"userLogin"`
+	Token     string `json:"token"`
+	TTL       string `json:"ttl"`
+}
+
+func (t *TokenModel) Insert(token Token) error {
+	_, err := t.DB.Collection("tokens").InsertOne(context.TODO(), token)
+	return err
+}
+
+func (t *TokenModel) DeleteToken(token string) error {
+	_, err := t.DB.Collection("tokens").DeleteOne(context.TODO(), bson.M{"token": token})
+	return err
+}
+
+func (t *TokenModel) GetTokenDocumentByToken(tok string) (Token, error) {
+	var token Token
+	err := t.DB.Collection("tokens").FindOne(context.TODO(), bson.M{"token": tok}).Decode(&token)
+	if err != nil {
+		return token, err
+	}
+
+	return token, err
+}
+func (t *TokenModel) GetTokenDocumentByLogin(login string) (Token, error) {
+	var token Token
+	err := t.DB.Collection("tokens").FindOne(context.TODO(), bson.M{"userLogin": login}).Decode(&token)
+	if err != nil {
+		return Token{}, err
+	}
+	return token, nil
 }
 
 // import (

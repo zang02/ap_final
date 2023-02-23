@@ -3,10 +3,11 @@
 {{define "title"}}Home{{end}}
 
 {{define "main"}}
-    <h1>Home</h1>
-    {{if .IsAuthenticated}}
-        <p>Hi, {{ .User.Login}}</p>
-    {{else}}
-        <p>You are not supposed to be here</p>
-    {{end}}
+        <p>{{ with .User.Login}}
+            Hi, {{ . }}
+            {{ else }}
+                who are you
+            {{ end }}
+        </p>
+
 {{end}}

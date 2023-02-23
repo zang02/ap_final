@@ -53,7 +53,8 @@ func (app *application) requireAuth(next http.Handler) http.Handler {
 		// }
 		tokenCookie, err := r.Cookie("token")
 		if err != nil {
-			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+			fmt.Println(err)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
@@ -80,24 +81,32 @@ func (app *application) requireAuth(next http.Handler) http.Handler {
 
 func (app *application) authenticate(td *data.TemplateData, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
+		td.User.Email = ""
+		td.User.Login = ""
+		td.User.Name = ""
+		td.User.CreateDate = ""
+		td.IsAuthenticated = false
 		tokenCookie, err := r.Cookie("token")
 		if err != nil {
-			fmt.Println("not authenticated")
 			next.ServeHTTP(w, r)
 			return
 		}
-
-		user, err := data.GetUserByToken(tokenCookie.Value)
-		if err == nil {
+		TokenDocument, err := app.models.Tokens.GetTokenDocumentByToken(tokenCookie.Value)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		user, err := app.models.Users.GetByLogin(TokenDocument.UserLogin)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		} else {
 			td.User.Email = user.Email
 			td.User.Login = user.Login
 			td.User.Name = user.Name
 			td.User.CreateDate = user.CreateDate
+			td.IsAuthenticated = true
 		}
-		// get user by token
-		// assign user to td pointer
-
 		next.ServeHTTP(w, r)
 	})
 }

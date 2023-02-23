@@ -3,22 +3,34 @@ package main
 import (
 	"app/internal/data"
 	"app/internal/validator"
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 )
 
+func (app *application) testCookie() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		cookie2 := &http.Cookie{
+			Name:     "page",
+			Value:    "GoLinuxCloud",
+			Expires:  time.Now().Add(365 * 24 * time.Hour),
+			Secure:   false,
+			HttpOnly: true,
+			Path:     "/",
+		}
+		http.SetCookie(w, cookie2)
+
+		fmt.Fprintln(w, r.Cookies())
+	})
+}
+
 // enter requireAuth middleware
 // pointer template data set to zero value
 // then get user by token
 // add user data to pointer template data
-
-// func (app *application) HTML(templateName string, data ...any) func(w http.ResponseWriter, r *http.Request) {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-
-// 		ui.RenderTemplate(w, r, templateName, data)
-// 	}
-// }
 
 func (app *application) Render(templateName string, templateData *data.TemplateData) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -68,20 +80,24 @@ func (app *application) signupHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	cookie := &http.Cookie{
-		HttpOnly: true,
-		Secure:   true,
+	cookie := http.Cookie{
 		Name:     "token",
+		Value:    user.Login,
+		Expires:  time.Now().Add(365 * 24 * time.Hour),
+		Secure:   true,
+		HttpOnly: true,
 		Path:     "/",
-		Value:    "123",
-		Expires:  time.Now().Add(15 * time.Second),
-		SameSite: 2,
+		SameSite: 4,
 	}
-	http.SetCookie(w, cookie)
-	http.Redirect(w, r, "/", http.StatusCreated)
-	// validate and then add the user
-	// rw.WriteHeader(http.StatusOK)
-	// rw.Write([]byte("User Created"))
+
+	http.SetCookie(w, &cookie)
+	app.background(func() {
+		app.models.Tokens.Insert(data.Token{
+			Token:     cookie.Value,
+			UserLogin: user.Login,
+		})
+	})
+	http.Redirect(w, r, "http://localhost:"+app.config.port, http.StatusCreated)
 }
 
 func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +114,7 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, err := app.models.Users.GetByLogin(login)
-	if err.Error() == "mongo: no documents in result" {
+	if err == errors.New("mongo: no documents in result") {
 		app.render(w, r, "login.page.html", &data.TemplateData{
 			ErrorText: "user not found",
 			Code:      400,
@@ -113,61 +129,96 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
 	cookie := &http.Cookie{
-		HttpOnly: true,
-		Secure:   true,
 		Name:     "token",
+		Value:    user.Login,
+		Expires:  time.Now().Add(365 * 24 * time.Hour),
+		Secure:   true,
+		HttpOnly: true,
 		Path:     "/",
-		Value:    "122",
-		Expires:  time.Now().Add(15 * time.Second),
-		SameSite: 2,
+		SameSite: 4,
 	}
+
 	http.SetCookie(w, cookie)
-	http.Redirect(w, r, "/", http.StatusOK)
+	app.background(func() {
+		app.models.Tokens.Insert(data.Token{
+			Token:     cookie.Value,
+			UserLogin: user.Login,
+		})
+	})
+	// claimsMap := map[string]string{
+	// 	"aud": app.config.port,
+	// 	"iss": user.Login,
+	// 	"exp": fmt.Sprint(time.Now().Add(time.Minute * 1).Unix()),
+	// }
+	// secret := "secret"
+	// header := "HS256"
+	// tokenString, err := jwt.GenerateToken(header, claimsMap, secret)
+
+	http.Redirect(w, r, "http://localhost:"+app.config.port, http.StatusOK)
+
 }
 
-// func (app *application) loginUserForm(w http.ResponseWriter, r *http.Request) {
-// 	app.render(w, r, "login.page.gohtml", &templateData{
-// 		Form: forms.NewForm(nil),
-// 	})
-// }
+func (app *application) logoutHandler(w http.ResponseWriter, r *http.Request) {
 
-// func (app *application) loginUser(w http.ResponseWriter, r *http.Request) {
-// 	err := r.ParseForm()
-// 	if err != nil {
-// 		app.clientError(w, http.StatusBadRequest)
-// 		return
-// 	}
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		http.Redirect(w, r, "http://localhost:"+app.config.port, http.StatusSeeOther)
+		return
+	}
 
-// 	// Check whether the credentials are valid. If they're not, add a generic error
-// 	// message to the form errors map and re-display the login page.
-// 	form := forms.NewForm(r.PostForm)
-// 	id, err := app.users.Authenticate(form.Get("email"),
-// 		form.Get("password")) // Using embedded url.Values.Get method
-// 	if err != nil {
-// 		if errors.Is(err, models.ErrInvalidCredentials) {
-// 			form.FormErrors.Add("generic", "Email or Password is incorrect")
-// 			app.render(w, r, "login.page.gohtml", &templateData{Form: form})
-// 		} else {
-// 			app.serverError(w, err)
-// 		}
-// 		return
-// 	}
+	app.background(func() {
+		app.models.Tokens.DeleteToken(cookie.Value)
+	})
+	cookie.MaxAge = -1
+	cookie.Expires = time.Now()
+	cookie.Value = ""
+	http.SetCookie(w, cookie)
+	// app.background(
+	// 	func()func(){
+	// 		app.models.Tokens.GetTokenDocumentByToken(cookie.Value)
+	// 		app.models.Tokens.Drop()
+	// 		return
+	// 	}(),
+	// )
+	// claimsMap := map[string]string{
+	// 	"aud": app.config.port,
+	// 	"iss": user.Login,
+	// 	"exp": fmt.Sprint(time.Now().Add(time.Minute * 1).Unix()),
+	// }
+	// secret := "secret"
+	// header := "HS256"
+	// tokenString, err := jwt.GenerateToken(header, claimsMap, secret)
 
-// 	// Add the ID of the current user to the session, so that they are now "logged in".
-// 	app.session.Put(r, "authenticatedUserID", id)
+	http.Redirect(w, r, "http://localhost:"+app.config.port, http.StatusOK)
+}
+func (app *application) createTicketHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "create a new ticket")
+}
 
-// 	// Redirect the user to the create snippet page.
-// 	http.Redirect(w, r, "/snippet/create", http.StatusSeeOther)
-// }
+func (app *application) showTicketHandler(w http.ResponseWriter, r *http.Request) {
 
-// func (app application) logoutUser(w http.ResponseWriter, r *http.Request) {
-// 	// Remove the authenticatedUserID from the session data so that the user is
-// 	// 'logged out'.
-// 	app.session.Remove(r, "authenticatedUserID")
-// 	// Add a flash message to the session to confirm to the user that they've been
-// 	// logged out.
-// 	app.session.Put(r, "flash", "You've been logged out successfully!")
-// 	http.Redirect(w, r, "/", http.StatusSeeOther)
-// }
+	ticketId, err := app.readIDParam(r)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	ticket := data.Ticket{
+		ID:        ticketId,
+		UserId:    123, //i need to change it to the users id
+		CreatedAt: time.Now().Format("02 Jan 2006 at 15:04"),
+		Total:     104, //write a function to calculate total
+		Products: []data.Product{
+			data.Product{Name: "cheese", Price: 10, Amount: 2},
+			data.Product{Name: "bread", Price: 20, Amount: 1},
+			data.Product{Name: "sausage", Price: 30, Amount: 1},
+		},
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"ticket": ticket}, nil)
+	if err != nil {
+		app.logger.Println(err)
+		http.Error(w, "The server encountered a problem and could not process your request", http.StatusInternalServerError)
+	}
+}

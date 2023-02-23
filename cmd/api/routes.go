@@ -29,7 +29,7 @@ func (app *application) routes() http.Handler {
 	// function.
 	// r.Handle("/", dynamicMiddleware.ThenFunc(app.home)).Methods("GET")
 	r.Handle("/", app.authenticate(templateData, app.Render("home.page.html", templateData))).Methods("GET")
-
+	r.Handle("/testCookie", app.testCookie())
 	// Require auth middleware for auth'd/logged-in actions
 	// TODO: mux.Get("/snippet/create", dynamicMiddleware.Append(app.requireAuth).ThenFunc(app.createSnippetForm))
 	// TODO: mux.Get("/snippet/:id", dynamicMiddleware.ThenFunc(app.showSnippet))
@@ -38,10 +38,11 @@ func (app *application) routes() http.Handler {
 	// TODO: mux.Post("/snippet/create", dynamicMiddleware.Append(app.requireAuth).ThenFunc(app.createSnippet))
 
 	// Add the five new routes for user authentication.
-	r.Handle("/user/signup", app.Render("signup.page.html", templateData)).Methods("GET")
-	r.Handle("/user/login", app.Render("login.page.html", templateData)).Methods("GET")
-	r.HandleFunc("/user/signup", app.signupHandler).Methods("POST")
-	r.HandleFunc("/user/login", app.loginHandler).Methods("POST")
+	r.Handle("/signup", app.Render("signup.page.html", templateData)).Methods("GET")
+	r.Handle("/login", app.Render("login.page.html", templateData)).Methods("GET")
+	r.HandleFunc("/signup", app.signupHandler).Methods("POST")
+	r.HandleFunc("/login", app.loginHandler).Methods("POST")
+	r.HandleFunc("/logout", app.logoutHandler).Methods("POST")
 
 	// Require auth middleware for auth'd/logged-in actions
 	// r.Handle("/user/logout", dynamicMiddleware.Append(app.requireAuth).ThenFunc(app.logoutUser))
