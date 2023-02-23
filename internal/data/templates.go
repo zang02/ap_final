@@ -15,7 +15,7 @@ type TemplateData struct {
 	ErrorText       string
 	Code            int
 	User            User
-	// Snippets        []*models.Snippet
+	Tickets         []*Ticket
 }
 
 type Envelope map[string]interface{}

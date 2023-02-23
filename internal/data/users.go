@@ -48,13 +48,14 @@ func (u *UserModel) GetAllUsers() ([]User, error) {
 	return users, nil
 }
 
-// func (u *UserModel) Validate() error {
-// 	u.DB.Collection("users").Aggregate()
+func (u *UserModel) DeleteUserByLogin(login string) error {
+	collection := u.DB.Collection("users")
+	_, err := collection.DeleteOne(context.TODO(), bson.M{"login": login})
+	return err
+}
 
-// 	for _, user := range users {
-// 		if user.Login == u.Login {
-// 			return errors.New("User already exists")
-// 		}
-// 	}
-// 	return nil
-// }
+func (u *UserModel) UpdateUserByLogin(login string, newUser User) error {
+	collection := u.DB.Collection("users")
+	res := collection.FindOneAndUpdate(context.TODO(), bson.M{"login": login}, bson.M{"$set": newUser})
+	return res.Err()
+}
